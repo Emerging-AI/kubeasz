@@ -332,8 +332,20 @@ function get_sys_pkg() {
   [[ -f "$BASE/down/packages/$1.tgz" ]] && { logger warn "system packages for $1 existed"; return 0; }
 
   docker ps -a |grep -q temp_sys_pkg && { logger debug "remove existing container"; docker rm -f temp_sys_pkg; }
+
+  [[ "$SYS_PKG_VER" == *openeuler* ]] && {
+    docker build -f openeuler_2203/Dockerfile -t easzlab/kubeasz-sys-pkg:$SYS_PKG_VER .
+  }
+
   logger info "downloading system packages kubeasz-sys-pkg:$SYS_PKG_VER"
-  docker pull "easzlab/kubeasz-sys-pkg:$SYS_PKG_VER" && \
+
+  if ! docker image inspect "easzlab/kubeasz-sys-pkg:$SYS_PKG_VER" >/dev/null 2>&1; then
+    logger info "pulling system packages kubeasz-sys-pkg:$SYS_PKG_VER"
+    docker pull "easzlab/kubeasz-sys-pkg:$SYS_PKG_VER"
+  else
+    logger info "image kubeasz-sys-pkg:$SYS_PKG_VER already exists locally, skipping pull"
+  fi
+
   logger debug "run a temporary container" && \
   docker run -d --name temp_sys_pkg "easzlab/kubeasz-sys-pkg:$SYS_PKG_VER" && \
   logger debug "cp system packages" && \
@@ -684,7 +696,7 @@ function main() {
           ACTION="download_all"
           ;;
         P)
-          [[ $OPTARG =~ (ubuntu_[0-9]+|centos_[0-9]+|debian_[0-9]+|fedora_[0-9]+|almalinux_[0-9]+|opensuse_leap_[0-9]+|rocky_[0-9]+) ]] || \
+          [[ $OPTARG =~ (ubuntu_[0-9]+|centos_[0-9]+|debian_[0-9]+|fedora_[0-9]+|almalinux_[0-9]+|opensuse_leap_[0-9]+|rocky_[0-9]+|openeuler_[0-9]+) ]] || \
           { usage-down-sys-pkg; exit 1; }
           SYS_PKG_VER="${SYS_PKG_VER}_$OPTARG"
           ACTION="get_sys_pkg $OPTARG"
